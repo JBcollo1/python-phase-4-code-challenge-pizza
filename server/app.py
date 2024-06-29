@@ -58,6 +58,48 @@ def delete(id):
     db.session.delete(restaurant)
     db.session.commit()
     return jsonify({"message": "Restaurant deleted successfully"}), 204
+@app.route("/pizzas", methods = ["GET"])
+def get_pizza():
+    pizzas = Pizza.query.all()
+    return jsonify ([{"id":pizza.id, "ingredients":pizza.ingredients,"name":pizza.name}for pizza in pizzas])
+
+@app.route("/restaurant_pizzas", methods=["POST"])
+def add():
+    data = request.get_json()
+    
+    # Check if pizza_id and restaurant_id exist
+    restaurant = db.session.get(Restaurant, data.get('restaurant_id'))
+    pizza = db.session.get(Pizza, data.get('pizza_id'))
+    if not restaurant or not pizza:
+        return jsonify({"errors": ["validation errors"]}), 400
+
+    try:
+        new_restaurant_pizza = RestaurantPizza(price=data['price'], pizza_id=data['pizza_id'], restaurant_id=data['restaurant_id'])
+        db.session.add(new_restaurant_pizza)
+        db.session.commit()
+
+        response_data = {
+            "id": new_restaurant_pizza.id,
+            "pizza": {
+                "id": pizza.id,
+                "ingredients": pizza.ingredients,
+                "name": pizza.name
+            },
+            "pizza_id": pizza.id,
+            "price": new_restaurant_pizza.price,
+            "restaurant": {
+                "address": restaurant.address,
+                "id": restaurant.id,
+                "name": restaurant.name
+            },
+            "restaurant_id": restaurant.id
+        }
+
+        return jsonify(response_data), 201
+
+    except ValueError as e:
+        return jsonify({"errors": ["validation errors"]}), 400
+
 
 
 if __name__ == "__main__":
