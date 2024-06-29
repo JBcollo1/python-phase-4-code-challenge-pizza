@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from models import db, Restaurant, RestaurantPizza, Pizza
 from flask_migrate import Migrate
-from flask import Flask, request, make_response
+from flask import Flask, request, make_response, jsonify
 from flask_restful import Api, Resource
 import os
 
@@ -20,9 +20,44 @@ db.init_app(app)
 api = Api(app)
 
 
-@app.route("/")
+@app.route("/restaurants", methods = ['GET'])
 def index():
-    return "<h1>Code challenge</h1>"
+    restaurants = Restaurant.query.all()
+    return jsonify([{"address":restaurant.address, "id": restaurant.id, "name":restaurant.name}for restaurant in restaurants])
+@app.route("/restaurants/<int:id>", methods = ["GET"])
+def get_by_id(id):
+    restaurant = db.session.get(Restaurant,id)
+    if  restaurant is None:
+        return jsonify({'error':'Restaurant not found'}),404
+    restaurant_data = {
+        "address": restaurant.address,
+        "id": restaurant.id,
+        "name": restaurant.name,
+        "restaurant_pizzas": [
+            {
+                "id": rp.id,
+                "pizza": {
+                    "id": rp.pizza.id,
+                    "ingredients": rp.pizza.ingredients,
+                    "name": rp.pizza.name
+                },
+                "pizza_id": rp.pizza_id,
+                "price": rp.price,
+                "restaurant_id": rp.restaurant_id
+            }
+            for rp in restaurant.restaurant_pizzas
+        ]
+    }
+
+    return jsonify(restaurant_data)
+@app.route("/restaurants/<int:id>", methods = ["DELETE"])
+def delete(id):
+    restaurant = db.session.get(Restaurant,id)
+    if restaurant is None:
+        return jsonify({ "error": "Restaurant not found"}), 404
+    db.session.delete(restaurant)
+    db.session.commit()
+    return jsonify({"message": "Restaurant deleted successfully"}), 204
 
 
 if __name__ == "__main__":
